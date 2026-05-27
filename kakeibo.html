@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>かんたん家計チェック</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #f5f2ee;
+    --card: #ffffff;
+    --border: #e8e0d5;
+    --dark: #1c1712;
+    --warm: #f5e6c8;
+    --muted: #a08060;
+    --text: #3a2e26;
+    --sub: #7a6a58;
+    --light: #faf7f2;
+    --col-a: #e07030; --bg-a: #fdeede;
+    --col-b: #3070c0; --bg-b: #deeafd;
+    --col-e: #30a060; --bg-e: #daf5e8;
+    --col-o: #906090; --bg-o: #f0e0f5;
+    --red: #c03030; --blue: #3070c0; --green: #30a060;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    color: var(--text);
+    overscroll-behavior: none;
+  }
+
+  /* ── ヘッダー ── */
+  .header {
+    background: var(--dark);
+    padding: 14px 16px 10px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-title { color: var(--warm); font-size: 16px; font-weight: 900; letter-spacing: .04em; }
+  .header-sub   { color: var(--muted); font-size: 10px; margin-top: 2px; }
+
+  .tabs {
+    display: flex; background: #2a2018; border-radius: 8px;
+    padding: 3px; margin-top: 10px; gap: 3px;
+  }
+  .tab {
+    flex: 1; padding: 7px 0; border: none; border-radius: 6px;
+    font-family: inherit; font-size: 12px; font-weight: 700;
+    cursor: pointer; background: transparent; color: var(--muted);
+    transition: all .15s;
+  }
+  .tab.active { background: var(--warm); color: var(--dark); }
+
+  /* ── ナビ ── */
+  .nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px 4px;
+  }
+  .nav-btn {
+    background: none; border: none; font-size: 22px;
+    cursor: pointer; color: var(--dark); padding: 2px 8px;
+  }
+  .nav-title { font-weight: 900; font-size: 14px; color: var(--dark); }
+
+  /* ── ボディ ── */
+  .body { padding: 4px 12px 64px; }
+
+  /* ── サマリーカード ── */
+  .summary-card {
+    background: var(--card); border-radius: 12px;
+    padding: 12px 16px; margin-bottom: 10px;
+    border: 1.5px solid var(--border);
+  }
+  .summary-label { font-size: 10px; color: var(--muted); letter-spacing: .15em; margin-bottom: 6px; font-family: 'DM Mono', monospace; }
+  .summary-row   { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+  .summary-key   { color: var(--sub); }
+  .summary-val   { font-family: 'DM Mono', monospace; font-weight: 900; }
+  .summary-diff  { display: flex; justify-content: space-between; font-size: 12px; padding: 6px 0 0; border-top: 1px dashed var(--border); margin-top: 4px; }
+
+  /* ── 週ビュー ── */
+  .day-card { background: var(--card); border-radius: 12px; margin-bottom: 8px; overflow: hidden; border: 1.5px solid var(--border); }
+  .day-head {
+    background: var(--light); padding: 8px 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none;
+  }
+  .day-head.today { background: var(--dark); }
+  .day-head-left  { display: flex; align-items: baseline; gap: 6px; }
+  .day-dow  { font-weight: 900; font-size: 13px; color: var(--dark); }
+  .day-date { font-size: 11px; color: var(--sub); }
+  .day-head.today .day-dow,
+  .day-head.today .day-date { color: var(--warm); }
+  .day-head-right { font-size: 11px; color: var(--muted); }
+
+  .day-chips { padding: 5px 8px 3px; display: flex; flex-wrap: wrap; gap: 2px; }
+  .chip {
+    display: inline-flex; align-items: center;
+    border-radius: 6px; padding: 3px 8px;
+    font-size: 11px; font-weight: 700; margin: 1px;
+  }
+  .chip-A    { background: var(--bg-a); color: var(--col-a); border: 1px solid #e0702030; }
+  .chip-B    { background: var(--bg-b); color: var(--col-b); border: 1px solid #3070c030; }
+  .chip-外食  { background: var(--bg-e); color: var(--col-e); border: 1px solid #30a06030; }
+  .chip-other{ background: var(--bg-o); color: var(--col-o); border: 1px solid #90609030; }
+  .chip-sm   { font-size: 10px !important; }
+
+  .act-row {
+    padding: 4px 12px 8px; border-top: 1px dashed var(--border);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 3px;
+  }
+  .act-label { font-size: 10px; color: #9a8a78; margin-right: 2px; }
+  .empty-text { font-size: 11px; color: #c0b0a0; padding: 2px 6px; }
+
+  .diff-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 10px; font-weight: 700; margin-left: 4px;
+  }
+  .diff-plus  { background: #fde0e0; color: var(--red); }
+  .diff-minus { background: #e0eafd; color: var(--blue); }
+  .diff-zero  { background: #e8f5e8; color: var(--green); }
+
+  /* ── 月ビュー ── */
+  .month-header { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; margin-bottom: 3px; }
+  .month-dow    { text-align: center; font-size: 10px; color: var(--sub); font-weight: 700; padding: 3px 0; }
+  .month-grid   { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; margin-bottom: 3px; }
+  .month-cell {
+    background: var(--card); border-radius: 8px; padding: 5px 4px;
+    min-height: 58px; cursor: pointer;
+    border: 1.5px solid var(--border);
+    overflow: hidden;
+  }
+  .month-cell.today { background: var(--dark); border: 2px solid var(--col-a); }
+  .month-cell-day   { font-size: 11px; font-weight: 900; color: var(--dark); margin-bottom: 2px; }
+  .month-cell.today .month-cell-day { color: var(--warm); }
+  .month-chip {
+    display: block; font-size: 8px; font-weight: 700;
+    border-radius: 3px; padding: 1px 3px; margin-bottom: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ── チャットビュー ── */
+  .chat-wrap  { display: flex; flex-direction: column; height: calc(100vh - 108px); }
+  .chat-body  { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .bubble-ai   { align-self: flex-start; max-width: 88%; }
+  .bubble-user { align-self: flex-end;   max-width: 88%; }
+  .bubble-text-ai {
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 4px 14px 14px 14px;
+    padding: 10px 14px; font-size: 13px; line-height: 1.75;
+    color: var(--dark); white-space: pre-wrap;
+  }
+  .bubble-text-user {
+    background: var(--dark); border-radius: 14px 4px 14px 14px;
+    padding: 10px 14px; font-size: 13px; line-height: 1.75; color: var(--warm);
+  }
+  .recorded {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-top: 6px; padding: 8px 10px;
+    background: var(--light); border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+  }
+  .recorded-amount { font-weight: 900; font-size: 14px; }
+  .recorded-date   { font-size: 10px; color: var(--sub); }
+
+  .input-bar {
+    display: flex; gap: 8px; padding: 10px 14px;
+    background: var(--card); border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .chat-input {
+    flex: 1; padding: 10px 12px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 14px; font-family: inherit; outline: none;
+    background: var(--light);
+  }
+  .send-btn {
+    padding: 10px 16px; border: none; border-radius: 10px;
+    background: var(--dark); color: var(--warm);
+    font-weight: 700; font-size: 13px;
+    cursor: pointer; font-family: inherit; flex-shrink: 0;
+    transition: opacity .15s;
+  }
+  .send-btn:disabled { opacity: .45; cursor: default; }
+
+  .quick-row {
+    display: flex; gap: 6px; padding: 6px 14px 10px;
+    background: var(--card); flex-shrink: 0; flex-wrap: wrap;
+  }
+  .quick-btn {
+    padding: 5px 10px; border: 1.5px solid var(--border);
+    border-radius: 20px; font-size: 11px; font-weight: 700;
+    background: var(--light); color: var(--sub);
+    cursor: pointer; font-family: inherit;
+  }
+
+  /* ── モーダル ── */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.52); z-index: 200;
+    display: flex; align-items: flex-end;
+  }
+  .modal-box {
+    background: var(--card); border-radius: 20px 20px 0 0;
+    padding: 20px 16px 40px; width: 100%; max-height: 82vh;
+    overflow-y: auto;
+  }
+  .modal-title   { font-weight: 900; font-size: 17px; color: var(--dark); margin-bottom: 2px; }
+  .modal-sub     { font-size: 11px; color: #9a8a78; margin-bottom: 14px; }
+  .modal-section { font-size: 11px; color: var(--muted); letter-spacing: .1em; margin-bottom: 6px; }
+  .modal-none    { font-size: 12px; color: #c0b0a0; margin-bottom: 8px; }
+  .modal-row     { display: flex; gap: 6px; margin-bottom: 7px; align-items: center; }
+  .modal-input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .modal-divider { border: none; border-top: 1px dashed var(--border); margin: 12px 0; }
+
+  select, input[type="number"] {
+    flex: 1; padding: 10px; border: 1.5px solid var(--border);
+    border-radius: 8px; font-size: 13px; font-family: inherit;
+    background: var(--card); outline: none;
+  }
+  .btn-add {
+    padding: 10px 12px; border: none; border-radius: 8px;
+    font-weight: 700; font-size: 12px;
+    cursor: pointer; font-family: inherit; white-space: nowrap;
+  }
+  .btn-save {
+    display: block; width: 100%; padding: 13px; border: none;
+    border-radius: 10px; background: var(--dark); color: var(--warm);
+    font-weight: 700; font-size: 14px; cursor: pointer;
+    font-family: inherit; margin-bottom: 8px;
+  }
+  .btn-close {
+    display: block; width: 100%; padding: 11px; border: none;
+    border-radius: 10px; background: #f0ece6; color: var(--sub);
+    font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+  .btn-del {
+    background: #feeee8; color: var(--red); border: none;
+    border-radius: 6px; padding: 3px 8px; font-size: 11px;
+    cursor: pointer; font-family: inherit;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">🛒 かんたん家計チェック</div>
+  <div class="header-sub">5人家族・弁当2人分込み｜データ自動保存</div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchView('chat')">💬 入力</button>
+    <button class="tab" onclick="switchView('week')">週</button>
+    <button class="tab" onclick="switchView('month')">月</button>
+  </div>
+</div>
+
+<div id="view-chat"></div>
+<div id="view-week"  style="display:none"></div>
+<div id="view-month" style="display:none"></div>
+
+<!-- モーダル -->
+<div class="overlay" id="modal" style="display:none" onclick="closeModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-sub">予定の追加・削除 ／ 実績の手動入力</div>
+    <div class="modal-section">▸ 予定</div>
+    <div id="modal-sched-list"></div>
+    <div class="modal-input-row">
+      <select id="modal-sched-type">
+        <option value="A">買い物A</option>
+        <option value="B">買い物B</option>
+        <option value="外食">外食</option>
+        <option value="その他">その他</option>
+      </select>
+      <button class="btn-add" id="modal-sched-add-btn" onclick="modalAddSched()">＋予定追加</button>
+    </div>
+    <hr class="modal-divider">
+    <div class="modal-section">▸ 実績（手動）</div>
+    <div id="modal-actual-list"></div>
+    <div class="modal-input-row">
+      <select id="modal-actual-type">
+        <option value="A">買い物A</option>
+        <option value="B">買い物B</option>
+        <option value="外食">外食</option>
+        <option value="その他">その他</option>
+      </select>
+      <input type="number" id="modal-actual-amount" placeholder="金額">
+    </div>
+    <button class="btn-save" onclick="modalSaveActual()">実績を記録する</button>
+    <button class="btn-close" onclick="closeModal()">閉じる</button>
+  </div>
+</div>
+
+<script>
+// ── 定数 ──────────────────────────────────────────────
+const BUDGETS = { A:10000, B:7500, 外食:5000, その他:0 };
+const TYPE_META = {
+  A:    { label:"買い物A", col:"var(--col-a)", bg:"var(--bg-a)", cls:"chip-A" },
+  B:    { label:"買い物B", col:"var(--col-b)", bg:"var(--bg-b)", cls:"chip-B" },
+  外食: { label:"外食",   col:"var(--col-e)", bg:"var(--bg-e)", cls:"chip-外食" },
+  その他:{ label:"その他",col:"var(--col-o)", bg:"var(--bg-o)", cls:"chip-other" },
+};
+const DAYS_JA = ["日","月","火","水","木","金","土"];
+const SK_SCHED = "kakeibo-sched-v3";
+const SK_ACT   = "kakeibo-act-v3";
+
+// ── 状態 ──────────────────────────────────────────────
+const today = new Date();
+let curView = "chat";
+let weekOffset = 0;
+let curYear  = today.getFullYear();
+let curMonth = today.getMonth();
+let modalKey = null;
+
+let schedule = {};
+let actual   = {};
+
+// ── localStorage ─────────────────────────────────────
+function lsGet(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} }
+
+function save(){ lsSet(SK_SCHED,schedule); lsSet(SK_ACT,actual); }
+
+// ── 初期化 ────────────────────────────────────────────
+function dateKey(y,m,d){ return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
+
+function buildDefaultSchedule(year,month){
+  const sched={}, days=new Date(year,month+1,0).getDate();
+  for(let d=1;d<=days;d++){
+    const dow=new Date(year,month,d).getDay(), key=dateKey(year,month,d);
+    if(dow===1) (sched[key]=sched[key]||[]).push({type:"A",  id:key+"_A"});
+    if(dow===4) (sched[key]=sched[key]||[]).push({type:"B",  id:key+"_B"});
+    if(dow===6) (sched[key]=sched[key]||[]).push({type:"外食",id:key+"_E"});
+  }
+  return sched;
+}
+
+function init(){
+  const savedSched = lsGet(SK_SCHED);
+  const savedAct   = lsGet(SK_ACT);
+  // 今月のデフォルトをベースに、保存済みデータをマージ
+  const def = buildDefaultSchedule(curYear, curMonth);
+  schedule  = savedSched ? {...def, ...savedSched} : def;
+  actual    = savedAct || {};
+  renderAll();
+  initChat();
+}
+
+// ── チップHTML ────────────────────────────────────────
+function chipHtml(type, text, extra=""){
+  const m=TYPE_META[type]||TYPE_META["その他"];
+  return `<span class="chip ${m.cls} ${extra}">${text}</span>`;
+}
+
+// ── サマリー計算 ──────────────────────────────────────
+function calcSum(keys){
+  let p=0,s=0;
+  keys.forEach(k=>{
+    (schedule[k]||[]).forEach(x=>{ p+=BUDGETS[x.type]||0; });
+    (actual[k]||[]).forEach(x=>{ s+=Number(x.actual)||0; });
+  });
+  return {planned:p, spent:s, diff:s-p};
+}
+
+function summaryHtml(sum, label){
+  const dc = sum.diff>0?"diff-plus": sum.diff<0?"diff-minus":"diff-zero";
+  return `<div class="summary-card">
+    <div class="summary-label">${label}</div>
+    <div class="summary-row"><span class="summary-key">予定合計</span><span class="summary-val">¥${sum.planned.toLocaleString()}</span></div>
+    <div class="summary-row"><span class="summary-key">実績合計</span><span class="summary-val">¥${sum.spent.toLocaleString()}</span></div>
+    <div class="summary-diff"><span class="summary-key">差額</span>
+      <span class="summary-val ${dc}">${sum.diff>0?"+":""}${sum.diff.toLocaleString()}円</span>
+    </div>
+  </div>`;
+}
+
+// ── 週ビュー ──────────────────────────────────────────
+function getWeekDates(){
+  const base=new Date(today);
+  base.setDate(base.getDate()-base.getDay()+weekOffset*7);
+  return Array.from({length:7},(_,i)=>{ const d=new Date(base); d.setDate(base.getDate()+i); return d; });
+}
+
+function renderWeek(){
+  const dates   = getWeekDates();
+  const keys    = dates.map(d=>dateKey(d.getFullYear(),d.getMonth(),d.getDate()));
+  const sum     = calcSum(keys);
+  const rangeLabel = `${dates[0].getMonth()+1}/${dates[0].getDate()} 〜 ${dates[6].getMonth()+1}/${dates[6].getDate()}`;
+
+  let html = `<div class="nav">
+    <button class="nav-btn" onclick="weekPrev()">‹</button>
+    <span class="nav-title">${rangeLabel}</span>
+    <button class="nav-btn" onclick="weekNext()">›</button>
+  </div>`;
+  html += summaryHtml(sum, "WEEKLY SUMMARY");
+
+  dates.forEach((d,i)=>{
+    const key = keys[i];
+    const isToday = d.toDateString()===today.toDateString();
+    const items = schedule[key]||[];
+    const acts  = actual[key]||[];
+    const planned = items.reduce((s,x)=>s+(BUDGETS[x.type]||0),0);
+    const spent   = acts.reduce((s,x)=>s+Number(x.actual||0),0);
+    const diff    = spent-planned;
+
+    let chipsHtml = items.map(it=>chipHtml(it.type,`${TYPE_META[it.type].label} ¥${(BUDGETS[it.type]||0).toLocaleString()}`)).join("");
+    if(!chipsHtml) chipsHtml=`<span class="empty-text">予定なし</span>`;
+
+    let actHtml = acts.map(a=>chipHtml(a.type||"その他",`${TYPE_META[a.type]?.label||"その他"} ¥${Number(a.actual).toLocaleString()}`,"chip-sm")).join("");
+    if(!actHtml) actHtml=`<span class="empty-text">未入力</span>`;
+
+    let diffHtml="";
+    if(planned>0&&spent>0){
+      const dc=diff>0?"diff-plus":diff<0?"diff-minus":"diff-zero";
+      diffHtml=`<span class="diff-badge ${dc}">${diff>0?"+":""}${diff.toLocaleString()}円</span>`;
+    }
+
+    const actRow = (items.length>0||acts.length>0) ? `<div class="act-row"><span class="act-label">実績</span>${actHtml}${diffHtml}</div>` : "";
+
+    html+=`<div class="day-card">
+      <div class="day-head${isToday?" today":""}" onclick="openDay('${key}')">
+        <div class="day-head-left">
+          <span class="day-dow">${DAYS_JA[d.getDay()]}曜</span>
+          <span class="day-date">${d.getMonth()+1}/${d.getDate()}</span>
+        </div>
+        <span class="day-head-right">＋編集</span>
+      </div>
+      <div class="day-chips">${chipsHtml}</div>
+      ${actRow}
+    </div>`;
+  });
+
+  document.getElementById("view-week").innerHTML=`<div class="body">${html}</div>`;
+}
+
+function weekPrev(){ weekOffset--; renderWeek(); }
+function weekNext(){ weekOffset++; renderWeek(); }
+
+// ── 月ビュー ──────────────────────────────────────────
+function getMonthGrid(){
+  const first=new Date(curYear,curMonth,1).getDay();
+  const days =new Date(curYear,curMonth+1,0).getDate();
+  const grid=[]; let week=Array(first).fill(null);
+  for(let d=1;d<=days;d++){ week.push(d); if(week.length===7){grid.push(week);week=[];} }
+  if(week.length) grid.push([...week,...Array(7-week.length).fill(null)]);
+  return grid;
+}
+
+function renderMonth(){
+  const totalDays=new Date(curYear,curMonth+1,0).getDate();
+  const monthKeys=Array.from({length:totalDays},(_,i)=>dateKey(curYear,curMonth,i+1));
+  const sum=calcSum(monthKeys);
+
+  let html=`<div class="nav">
+    <button class="nav-btn" onclick="monthPrev()">‹</button>
+    <span class="nav-title">${curYear}年 ${curMonth+1}月</span>
+    <button class="nav-btn" onclick="monthNext()">›</button>
+  </div>`;
+  html+=summaryHtml(sum,"MONTHLY SUMMARY");
+  html+=`<div class="month-header">${DAYS_JA.map(d=>`<div class="month-dow">${d}</div>`).join("")}</div>`;
+
+  getMonthGrid().forEach(week=>{
+    html+=`<div class="month-grid">`;
+    week.forEach(d=>{
+      if(!d){ html+=`<div></div>`; return; }
+      const key=dateKey(curYear,curMonth,d);
+      const items=schedule[key]||[], acts=actual[key]||[];
+      const isToday=new Date(curYear,curMonth,d).toDateString()===today.toDateString();
+      let inner=items.map(it=>`<div class="month-chip" style="background:${TYPE_META[it.type].bg.replace("var(","").replace(")","")};color:${TYPE_META[it.type].col.replace("var(","").replace(")","")}">${TYPE_META[it.type].label}</div>`).join("");
+      inner+=acts.map(a=>`<div class="month-chip" style="background:${(TYPE_META[a.type]||TYPE_META["その他"]).bg.replace("var(","").replace(")","")};color:${(TYPE_META[a.type]||TYPE_META["その他"]).col.replace("var(","").replace(")","")};opacity:.8">¥${Number(a.actual).toLocaleString()}</div>`).join("");
+      html+=`<div class="month-cell${isToday?" today":""}" onclick="openDay('${key}')">
+        <div class="month-cell-day">${d}</div>${inner}
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+
+  document.getElementById("view-month").innerHTML=`<div class="body">${html}</div>`;
+}
+
+function monthPrev(){
+  if(curMonth===0){curYear--;curMonth=11;}else curMonth--;
+  mergeDefaultSchedule();
+  renderMonth();
+}
+function monthNext(){
+  if(curMonth===11){curYear++;curMonth=0;}else curMonth++;
+  mergeDefaultSchedule();
+  renderMonth();
+}
+function mergeDefaultSchedule(){
+  const def=buildDefaultSchedule(curYear,curMonth);
+  Object.keys(def).forEach(k=>{ if(!schedule[k]) schedule[k]=def[k]; });
+}
+
+// ── チャットビュー ────────────────────────────────────
+let messages = [
+  { role:"ai", text:"こんにちは！買い物や外食の記録を送ってください😊\n例：「今日スーパーで8200円」「昨日外食5500円」「ドラッグストア3200円」" }
+];
+
+function initChat(){
+  const el=document.getElementById("view-chat");
+  el.innerHTML=`
+    <div class="chat-wrap">
+      <div class="chat-body" id="chat-body"></div>
+      <div class="input-bar">
+        <input class="chat-input" id="chat-input" type="text" placeholder="例：今日買い物A 9800円" inputmode="text">
+        <button class="send-btn" id="send-btn" onclick="sendMsg()">送信</button>
+      </div>
+      <div class="quick-row">
+        <button class="quick-btn" onclick="appendInput('買い物A')">＋買い物A</button>
+        <button class="quick-btn" onclick="appendInput('買い物B')">＋買い物B</button>
+        <button class="quick-btn" onclick="appendInput('外食')">＋外食</button>
+        <button class="quick-btn" onclick="appendInput('その他')">＋その他</button>
+      </div>
+    </div>`;
+  document.getElementById("chat-input").addEventListener("keydown",e=>{ if(e.key==="Enter") sendMsg(); });
+  renderMessages();
+}
+
+function appendInput(txt){
+  const el=document.getElementById("chat-input");
+  el.value=(el.value+(el.value?" ":"")+txt);
+  el.focus();
+}
+
+function renderMessages(){
+  const body=document.getElementById("chat-body");
+  if(!body) return;
+  body.innerHTML=messages.map(msg=>{
+    if(msg.role==="user") return `<div class="bubble-user"><div class="bubble-text-user">${escHtml(msg.text)}</div></div>`;
+    let rec="";
+    if(msg.recorded){
+      const m=TYPE_META[msg.recorded.type]||TYPE_META["その他"];
+      rec=`<div class="recorded">${chipHtml(msg.recorded.type,m.label)}<span class="recorded-amount">¥${Number(msg.recorded.amount).toLocaleString()}</span><span class="recorded-date">${msg.recorded.key}</span></div>`;
+    }
+    return `<div class="bubble-ai"><div class="bubble-text-ai">${escHtml(msg.text)}</div>${rec}</div>`;
+  }).join("");
+  body.scrollTop=body.scrollHeight;
+}
+
+function escHtml(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+async function sendMsg(){
+  const inp=document.getElementById("chat-input");
+  const btn=document.getElementById("send-btn");
+  const text=inp.value.trim();
+  if(!text) return;
+  inp.value="";
+  messages.push({role:"user",text});
+  renderMessages();
+  btn.disabled=true;
+
+  messages.push({role:"ai",text:"入力中…"});
+  renderMessages();
+
+  try{
+    const todayStr=`${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+    const parsed=await parseWithAI(text,todayStr);
+    messages.pop();
+    if(parsed.amount&&parsed.date){
+      const key=parsed.date;
+      const id=key+"_act_"+parsed.type+"_"+Date.now();
+      if(!actual[key]) actual[key]=[];
+      actual[key].push({id,type:parsed.type,actual:Number(parsed.amount)});
+      save();
+      messages.push({role:"ai",text:parsed.message||"記録しました！",recorded:{key,type:parsed.type,amount:parsed.amount}});
+    } else {
+      messages.push({role:"ai",text:parsed.message||"金額が読み取れませんでした。もう一度入力してください😊"});
+    }
+  }catch(e){
+    messages.pop();
+    messages.push({role:"ai",text:"読み取りに失敗しました。「今日買い物A 9800円」のように入力してみてください。"});
+  }
+
+  btn.disabled=false;
+  renderMessages();
+  if(curView==="week") renderWeek();
+  if(curView==="month") renderMonth();
+}
+
+async function parseWithAI(text,todayStr){
+  const prompt=`今日の日付: ${todayStr}
+ユーザーの入力: 「${text}」
+
+種別ルール:
+- 買い物A・スーパー週前半・月曜 → "A"
+- 買い物B・スーパー週後半・木金 → "B"
+- 外食・ランチ・夕食外・レストラン → "外食"
+- それ以外（ドラッグストア・コンビニ・日用品）→ "その他"
+
+以下のJSONのみを返してください（説明不要）:
+{"date":"YYYY-MM-DD","type":"A"|"B"|"外食"|"その他","amount":数値またはnull,"message":"確認メッセージ1文"}`;
+
+  const res=await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:200,messages:[{role:"user",content:prompt}]})
+  });
+  const data=await res.json();
+  const raw=data.content?.map(c=>c.text||"").join("").trim();
+  return JSON.parse(raw.replace(/```json|```/g,"").trim());
+}
+
+// ── モーダル ──────────────────────────────────────────
+function openDay(key){
+  modalKey=key;
+  const [,m,d]=key.split("-");
+  document.getElementById("modal-title").textContent=`${parseInt(m)}月${parseInt(d)}日`;
+  renderModalLists();
+  document.getElementById("modal").style.display="flex";
+}
+
+function closeModal(){
+  document.getElementById("modal").style.display="none";
+  modalKey=null;
+  renderAll();
+}
+
+function renderModalLists(){
+  if(!modalKey) return;
+  const items=schedule[modalKey]||[], acts=actual[modalKey]||[];
+  const selType=document.getElementById("modal-sched-type").value;
+  const m=TYPE_META[selType]||TYPE_META["その他"];
+  document.getElementById("modal-sched-add-btn").style.background=m.bg.replace("var(","").replace(")","");
+  document.getElementById("modal-sched-add-btn").style.color=m.col.replace("var(","").replace(")","");
+
+  document.getElementById("modal-sched-list").innerHTML = items.length===0
+    ? `<div class="modal-none">予定なし</div>`
+    : items.map(it=>`<div class="modal-row">${chipHtml(it.type,`${TYPE_META[it.type].label} ¥${(BUDGETS[it.type]||0).toLocaleString()}`)}<button class="btn-del" onclick="removeSched('${modalKey}','${it.id}')">削除</button></div>`).join("");
+
+  document.getElementById("modal-actual-list").innerHTML = acts.length===0 ? ""
+    : acts.map(a=>`<div class="modal-row">${chipHtml(a.type||"その他",(TYPE_META[a.type]?.label||"その他")+" ¥"+Number(a.actual).toLocaleString(),"chip-sm")}<button class="btn-del" onclick="removeActual('${modalKey}','${a.id}')">削除</button></div>`).join("");
+}
+
+function modalAddSched(){
+  const type=document.getElementById("modal-sched-type").value;
+  if(!schedule[modalKey]) schedule[modalKey]=[];
+  schedule[modalKey].push({type,id:modalKey+"_"+type+"_"+Date.now()});
+  save(); renderModalLists();
+}
+
+function modalSaveActual(){
+  const type  =document.getElementById("modal-actual-type").value;
+  const amount=document.getElementById("modal-actual-amount").value;
+  if(!amount||isNaN(Number(amount))) return;
+  if(!actual[modalKey]) actual[modalKey]=[];
+  actual[modalKey].push({id:modalKey+"_act_"+Date.now(),type,actual:Number(amount)});
+  document.getElementById("modal-actual-amount").value="";
+  save(); renderModalLists();
+}
+
+function removeSched(key,id){
+  schedule[key]=(schedule[key]||[]).filter(x=>x.id!==id);
+  save(); renderModalLists();
+}
+
+function removeActual(key,id){
+  actual[key]=(actual[key]||[]).filter(x=>x.id!==id);
+  save(); renderModalLists();
+}
+
+// ── ビュー切替 ────────────────────────────────────────
+function switchView(v){
+  curView=v;
+  ["chat","week","month"].forEach(n=>{
+    document.getElementById("view-"+n).style.display=n===v?"block":"none";
+  });
+  document.querySelectorAll(".tab").forEach((t,i)=>{
+    t.classList.toggle("active",["chat","week","month"][i]===v);
+  });
+  if(v==="week")  renderWeek();
+  if(v==="month") renderMonth();
+}
+
+function renderAll(){
+  renderWeek();
+  renderMonth();
+}
+
+// ── 月グリッドに色を正しく反映（CSS変数をインラインに展開） ──
+const cssVarMap = {
+  "var(--bg-a)":"#fdeede","var(--bg-b)":"#deeafd","var(--bg-e)":"#daf5e8","var(--bg-o)":"#f0e0f5",
+  "var(--col-a)":"#e07030","var(--col-b)":"#3070c0","var(--col-e)":"#30a060","var(--col-o)":"#906090",
+};
+// TYPE_METAのbg/colをCSS変数からHEXに変換
+Object.values(TYPE_META).forEach(m=>{
+  m.bgHex  = cssVarMap[m.bg]  || m.bg;
+  m.colHex = cssVarMap[m.col] || m.col;
+});
+
+// ── 起動 ─────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
